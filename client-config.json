@@ -1,0 +1,24 @@
+{
+  "unicast": "127.0.0.1",
+  "logging": {
+    "level": "debug"
+  },
+  "services": [
+    {
+      "service": "0x1234",
+      "instance": "0x5678",
+      "eventgroups": [
+        {
+          "eventgroup": "0x01",
+          "events": [
+            "0x1235"
+          ]
+        }
+      ],
+      "subscribe": true,
+      "request": true
+    }
+  ],
+  "routing": "client"
+}
+
