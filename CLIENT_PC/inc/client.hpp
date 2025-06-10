@@ -96,6 +96,9 @@ class client_app
             /* create an instance for the app with name "client" */
             _app_ptr = vsomeip::runtime::get()->create_application("client");
 
+            /* call standard vsomeip app init */
+            _app_ptr->init();
+
             /* once a service with given id is available, call the method onServiceAvailable */
             _app_ptr->register_availability_handler(
                 service_id,
@@ -111,9 +114,6 @@ class client_app
                 onMessageEventHandler
             );
 
-            /* call standard vsomeip app init */
-            _app_ptr->init();
-            
             return true;
         }
 

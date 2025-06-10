@@ -7,25 +7,46 @@
 
 #define LOG_INF(msg) std::cout << "[INFO] " << msg << std::endl
 
-constexpr vsomeip::service_t server_id = 0x0100;
-constexpr vsomeip::instance_t instance_id = 0x8888;
-constexpr vsomeip::method_t method_id = 0x4022;
+constexpr vsomeip::service_t service_id = 0x1234;
+constexpr vsomeip::instance_t instance_id = 0x5678;
+constexpr vsomeip::method_t method_id = 0x0421;
+constexpr vsomeip::event_t event_id = 0x1235;
 
-void on_message_handler(const std::shared_ptr<vsomeip::message> &_request) 
+void onClientRequestHandler(const std::shared_ptr<vsomeip::message> &_request) 
 {
     LOG_INF("Received request! Privet!\n");
-    auto app = vsomeip::runtime::get()->get_application("server");
-    auto response = vsomeip::runtime::get()->create_response(_request);
-    response->set_payload(_request->get_payload());
-    app->send(response);
+    
+    auto app = vsomeip::runtime::get()->get_application("service");
+    
+    std::shared_ptr<vsomeip::payload> pl = _request->get_payload();
+
+    std::vector<vsomeip::byte_t> &payload_data = pl->get_data();
+
+    uint32_t received_num = 0;
+
+    std::copy(
+        payload_data.begin(),
+        payload_data.begin() + sizeof(uint32_t),
+        reinterpret_cast<uint8_t*>(&received_num)
+    );
+
+    std::cout << "[INFO] Received number: " << received_num << std::endl;
+
+    uint32_t result = input_number + 90; 
+    
+    /*
+    // Prepare event
+    std::shared_ptr<vsomeip::payload> event_payload = vsomeip::runtime::get()->create_payload();
+    std::vector<vsomeip::byte_t> event_data;
+    event_data.push_back(static_cast<vsomeip::byte_t>(result));
+    event_payload->set_data(event_data);
+
+    // Send event to all subscribers
+    app->notify(SAMPLE_SERVICE_ID, SAMPLE_INSTANCE_ID, SAMPLE_EVENT_ID, event_payload);
+    */
 }
 
-void on_message_available(vsomeip::service_t _service, vsomeip::instance_t _instance, bool _isAvail)
-{
-    LOG_INF("Service availability changed. Hi!\n");
-}
-
-class server_app
+class service_app
 {
     private:
         std::shared_ptr<vsomeip::application> _app_ptr;
@@ -33,23 +54,29 @@ class server_app
     public:
         bool init(void)
         {
-            _app_ptr = vsomeip::runtime::get()->create_application("server");
+            _app_ptr = vsomeip::runtime::get()->create_application("service");
             
-            _app_ptr->register_availability_handler(
-                server_id,
-                instance_id,
-                on_message_available
-            );
-
             _app_ptr->register_message_handler(
-                server_id,
+                service_id,
                 instance_id,
                 method_id,
-                on_message_handler
+                onClientRequestHandler
             );
 
             _app_ptr->init();
-            _app_ptr->offer_service(server_id, instance_id); // offer the service
+
+            _app_ptr->offer_service(
+                service_id, 
+                instance_id
+            ); 
+
+            app->offer_event(
+                service_id,
+                instance_id, 
+                event_id, 
+                vsomeip::event_type_e::ET_FIELD,
+                true
+            );
 
             return true;
         }
@@ -61,7 +88,7 @@ class server_app
 
         void stop(void) 
         {
-            _app_ptr->unregister_availability_handler(server_id, instance_id);
+            _app_ptr->unregister_availability_handler(service_id, instance_id);
             _app_ptr->unregister_message_handler(vsomeip::ANY_SERVICE, instance_id, method_id);
             _app_ptr->stop();
         }

@@ -2,10 +2,10 @@
 
 int main(void) 
 {
-    server_app _server;
+    service_app _service;
 
-    _server.init();
-    _server.start();
+    _service.init();
+    _service.start();
 
     return 0;
 }
