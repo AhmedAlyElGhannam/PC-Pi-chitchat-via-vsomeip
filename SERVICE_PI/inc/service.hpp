@@ -14,37 +14,41 @@ constexpr vsomeip::event_t event_id = 0x1235;
 
 void onClientRequestHandler(const std::shared_ptr<vsomeip::message> &_request) 
 {
-    LOG_INF("Received request! Privet!\n");
-    
+    LOG_INF("Received request! Privet!");
+
     auto app = vsomeip::runtime::get()->get_application("service");
-    
+
     std::shared_ptr<vsomeip::payload> pl = _request->get_payload();
 
-    std::vector<vsomeip::byte_t> &payload_data = pl->get_data();
+    const vsomeip::byte_t* data_ptr = pl->get_data();
+    std::size_t data_len = pl->get_length();
 
     uint32_t received_num = 0;
-
-    std::copy(
-        payload_data.begin(),
-        payload_data.begin() + sizeof(uint32_t),
-        reinterpret_cast<uint8_t*>(&received_num)
-    );
+    if (data_len >= sizeof(uint32_t)) {
+        std::copy(
+            data_ptr,
+            data_ptr + sizeof(uint32_t),
+            reinterpret_cast<vsomeip::byte_t*>(&received_num)
+        );
+    }
 
     std::cout << "[INFO] Received number: " << received_num << std::endl;
 
-    uint32_t result = input_number + 90; 
-    
-    /*
-    // Prepare event
+    uint32_t result = received_num + 90;
+
+    std::vector<vsomeip::byte_t> event_data(sizeof(uint32_t));
+    std::copy(
+        reinterpret_cast<vsomeip::byte_t*>(&result),
+        reinterpret_cast<vsomeip::byte_t*>(&result) + sizeof(uint32_t),
+        event_data.begin()
+    );
+
     std::shared_ptr<vsomeip::payload> event_payload = vsomeip::runtime::get()->create_payload();
-    std::vector<vsomeip::byte_t> event_data;
-    event_data.push_back(static_cast<vsomeip::byte_t>(result));
     event_payload->set_data(event_data);
 
-    // Send event to all subscribers
-    app->notify(SAMPLE_SERVICE_ID, SAMPLE_INSTANCE_ID, SAMPLE_EVENT_ID, event_payload);
-    */
+    app->notify(service_id, instance_id, event_id, event_payload);
 }
+
 
 class service_app
 {
@@ -70,13 +74,18 @@ class service_app
                 instance_id
             ); 
 
-            app->offer_event(
+            std::set<vsomeip::eventgroup_t> event_groups = { 0x01 }; 
+            _app_ptr->offer_event(
                 service_id,
                 instance_id, 
                 event_id, 
+                event_groups,
                 vsomeip::event_type_e::ET_FIELD,
-                true
+                std::chrono::milliseconds::zero(),
+                true,  // is_reliable
+                false  // is_lazy
             );
+
 
             return true;
         }
